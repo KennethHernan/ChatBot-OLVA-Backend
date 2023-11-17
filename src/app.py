@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, session
 from flask_socketio import SocketIO, emit
 from db import db
+from user import User
 import bcrypt
 import smtplib
 from flask_cors import CORS
@@ -94,6 +95,40 @@ def register():
         }
         return jsonify(response), 500
 
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    dbcolec = mongo.db.usuario
+    # Obtener los datos del JSON enviado en la solicitud
+    data = request.get_json()
+
+    # Extraer los datos necesarios del JSON
+    username = data.get('username')
+    password = data.get('password')
+
+    # Buscar el usuario en la base de datos
+    user = dbcolec.find_one({'username': username})
+
+    if user:
+        hashed_password = user.get('password')
+        # Verificar si la contraseña es correcta
+        if bcrypt.checkpw(password.encode('utf-8'), hashed_password):
+            session['user_id'] = str(user.get('_id'))
+
+            response = {
+                'message': 'Inicio de sesión exitoso',
+                'username': username
+            }
+        else:
+            response = {
+                'message': 'Contraseña incorrecta'
+            }
+    else:
+        response = {
+            'message': 'Usuario no encontrado'
+        }
+
+    # Devolver la respuesta en formato JSON
+    return jsonify(response)
 
 @socket_io.on('connect')
 def handle_connect():
